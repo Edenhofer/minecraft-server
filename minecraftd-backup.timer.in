@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily Minecraft Server Backup
+Description=Daily @GAME@ Server Backup
 
 [Timer]
 OnCalendar=daily

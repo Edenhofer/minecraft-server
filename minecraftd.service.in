@@ -1,0 +1,13 @@
+[Unit]
+Description=@GAME@ Server
+After=local-fs.target network.target multi-user.target
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/@MYNAME@ start
+ExecStop=/usr/bin/@MYNAME@ stop
+User=@GAME_USER@
+Group=@GAME_USER@
+
+[Install]
+WantedBy=multi-user.target
