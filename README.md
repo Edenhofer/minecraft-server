@@ -34,6 +34,24 @@ make
 make install
 ```
 
+### Build and Install for a different Flavor of Minecraft
+
+```
+make GAME=spigot \
+  MYNAME=spigot \
+  SERVER_ROOT=/srv/craftbukkit \
+  BACKUP_PATHS="world world_nether world_the_end" \
+  GAME_USER=craftbukkit \
+  MAIN_EXECUTABLE=spigot.jar \
+  SERVER_START_CMD="java -Xms512M -Xmx1024M -jar ./spigot.jar nogui"
+```
+
+```
+make install \
+  GAME=spigot \
+  MYNAME=spigot
+```
+
 ## FAQ
 
 ### Where are the Server Files Located
