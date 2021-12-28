@@ -176,6 +176,8 @@ server_start() {
 		${SUDO_CMD} touch "${GAME_COMMAND_DUMP}"
 		# Ensure pipe-pine is started before the server itself by splitting the session creation and server startup
 		${SUDO_CMD} tmux -L "${SESSION_NAME}" new-session -s "${SESSION_NAME}" -c "${SERVER_ROOT}" -d /bin/bash
+		# Mimic GNU screen and allow for both C-a and C-b as prefix
+		${SUDO_CMD} tmux -L "${SESSION_NAME}" set -g prefix2 C-a
 		${SUDO_CMD} tmux -L "${SESSION_NAME}" wait-for -L "command_lock"
 		${SUDO_CMD} tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0 "cat > ${GAME_COMMAND_DUMP}"
 		${SUDO_CMD} tmux -L "${SESSION_NAME}" send-keys -t "${SESSION_NAME}":0.0 "exec ${SERVER_START_CMD}" Enter
@@ -201,9 +203,6 @@ server_start() {
 		${SUDO_CMD} rm -f "${GAME_COMMAND_DUMP}"
 		${SUDO_CMD} mkfifo "${GAME_COMMAND_DUMP}"
 		${SUDO_CMD} tmux -L "${SESSION_NAME}" wait-for -U "command_lock"
-
-		# Mimic GNU screen and allow for both C-a and C-b as prefix
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" set -g prefix2 C-a
 	fi
 
 	if [[ "${IDLE_SERVER,,}" == "true" ]]; then
