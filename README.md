@@ -38,7 +38,7 @@ make install
 
 ```
 make GAME=spigot \
-  MYNAME=spigot \
+  INAME=spigot \
   SERVER_ROOT=/srv/craftbukkit \
   BACKUP_PATHS="world world_nether world_the_end" \
   GAME_USER=craftbukkit \
@@ -49,7 +49,7 @@ make GAME=spigot \
 ```
 make install \
   GAME=spigot \
-  MYNAME=spigot
+  INAME=spigot
 ```
 
 ## FAQ

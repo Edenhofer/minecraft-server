@@ -14,7 +14,7 @@ SOURCES = minecraftd.sh.in minecraftd.conf.in minecraftd.service.in minecraftd.s
 OBJECTS = $(SOURCES:.in=)
 
 GAME = minecraft
-MYNAME = minecraftd
+INAME = minecraftd
 SERVER_ROOT = /srv/$(GAME)
 BACKUP_DEST = $(SERVER_ROOT)/backup
 BACKUP_PATHS = world
@@ -23,21 +23,21 @@ KEEP_BACKUPS = 10
 GAME_USER = $(GAME)
 MAIN_EXECUTABLE = minecraft_server.jar
 SESSION_NAME = $(GAME)
-SERVER_START_CMD = java -Xms512M -Xmx1024M -jar './$(MAIN_EXECUTABLE)' nogui
+SERVER_START_CMD = java -Xms512M -Xmx1024M -jar ./$${MAIN_EXECUTABLE} nogui
 SERVER_START_SUCCESS = done
 IDLE_SERVER = false
-IDLE_SESSION_NAME = idle_server_${SESSION_NAME}
+IDLE_SESSION_NAME = idle_server_$${SESSION_NAME}
 GAME_PORT = 25565
 CHECK_PLAYER_TIME = 30
 IDLE_IF_TIME = 1200
-GAME_COMMAND_DUMP = /tmp/${MYNAME}_${SESSION_NAME}_command_dump.txt
+GAME_COMMAND_DUMP = /tmp/$${INAME}_$${SESSION_NAME}_command_dump.txt
 
 .MAIN = all
 
 define replace_all
 	cp -a $(1) $(2)
 	sed -i \
-		-e 's#@MYNAME@#$(MYNAME)#g' \
+		-e 's#@INAME@#$(INAME)#g' \
 		-e 's#@GAME@#$(GAME)#g' \
 		-e 's#@SERVER_ROOT@#$(SERVER_ROOT)#g' \
 		-e 's#@BACKUP_DEST@#$(BACKUP_DEST)#g' \
@@ -87,19 +87,19 @@ distclean: clean
 maintainer-clean: clean
 
 install:
-	$(INSTALL_PROGRAM) -D minecraftd.sh "$(DESTDIR)$(bindir)/$(MYNAME)"
+	$(INSTALL_PROGRAM) -D minecraftd.sh "$(DESTDIR)$(bindir)/$(INAME)"
 	$(INSTALL_DATA) -D minecraftd.conf           "$(DESTDIR)$(confdir)/$(GAME)"
-	$(INSTALL_DATA) -D minecraftd.service        "$(DESTDIR)$(libdir)/systemd/system/$(MYNAME).service"
-	$(INSTALL_DATA) -D minecraftd-backup.service "$(DESTDIR)$(libdir)/systemd/system/$(MYNAME)-backup.service"
-	$(INSTALL_DATA) -D minecraftd-backup.timer   "$(DESTDIR)$(libdir)/systemd/system/$(MYNAME)-backup.timer"
-	$(INSTALL_DATA) -D minecraftd.sysusers       "$(DESTDIR)$(libdir)/sysusers.d/$(MYNAME).conf"
-	$(INSTALL_DATA) -D minecraftd.tmpfiles       "$(DESTDIR)$(libdir)/tmpfiles.d/$(MYNAME).conf"
+	$(INSTALL_DATA) -D minecraftd.service        "$(DESTDIR)$(libdir)/systemd/system/$(INAME).service"
+	$(INSTALL_DATA) -D minecraftd-backup.service "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup.service"
+	$(INSTALL_DATA) -D minecraftd-backup.timer   "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup.timer"
+	$(INSTALL_DATA) -D minecraftd.sysusers       "$(DESTDIR)$(libdir)/sysusers.d/$(INAME).conf"
+	$(INSTALL_DATA) -D minecraftd.tmpfiles       "$(DESTDIR)$(libdir)/tmpfiles.d/$(INAME).conf"
 
 uninstall:
-	rm -f "$(bindir)/$(MYNAME)"
+	rm -f "$(bindir)/$(INAME)"
 	rm -f "$(confdir)/$(GAME)"
-	rm -f "$(libdir)/systemd/system/$(MYNAME).service"
-	rm -f "$(libdir)/systemd/system/$(MYNAME)-backup.service"
-	rm -f "$(libdir)/systemd/system/$(MYNAME)-backup.timer"
-	rm -f "$(libdir)/sysusers.d/$(MYNAME).conf"
-	rm -f "$(libdir)/tmpfiles.d/$(MYNAME).conf"
+	rm -f "$(libdir)/systemd/system/$(INAME).service"
+	rm -f "$(libdir)/systemd/system/$(INAME)-backup.service"
+	rm -f "$(libdir)/systemd/system/$(INAME)-backup.timer"
+	rm -f "$(libdir)/sysusers.d/$(INAME).conf"
+	rm -f "$(libdir)/tmpfiles.d/$(INAME).conf"

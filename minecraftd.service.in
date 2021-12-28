@@ -4,8 +4,8 @@ After=local-fs.target network.target multi-user.target
 
 [Service]
 Type=forking
-ExecStart=/usr/bin/@MYNAME@ start
-ExecStop=/usr/bin/@MYNAME@ stop
+ExecStart=/usr/bin/@INAME@ start
+ExecStop=/usr/bin/@INAME@ stop
 User=@GAME_USER@
 Group=@GAME_USER@
 
