@@ -1,0 +1,16 @@
+[Unit]
+Description=@GAME@ Server World Backup
+After=local-fs.target
+
+[Service]
+Type=oneshot
+Environment=SERVER_ROOT=@SERVER_ROOT@/servers/%i
+Environment=BACKUP_DEST=@SERVER_ROOT@/servers/%i/backup
+Environment=SESSION_NAME=@GAME@-%i
+EnvironmentFile=-@INSTANCE_CONFIG_DIR@/%i
+ExecStart=/usr/bin/@INAME@ backup
+User=@GAME_USER@
+Group=@GAME_USER@
+
+[Install]
+WantedBy=multi-user.target

@@ -10,18 +10,27 @@ datarootdir = $(prefix)/share
 mandir = $(prefix)/share/man
 man1dir = $(mandir)/man1
 
-SOURCES = minecraftd.sh.in minecraftd.conf.in minecraftd.service.in minecraftd.sysusers.in minecraftd.tmpfiles.in minecraftd-backup.service.in minecraftd-backup.timer.in
+SOURCES = $(wildcard *.in)
 OBJECTS = $(SOURCES:.in=)
 
 GAME = minecraft
 INAME = minecraftd
 SERVER_ROOT = /srv/$(GAME)
+CONFIG_PATH = /etc/conf.d/$(GAME)
+SYSCONFDIR = /etc
+INSTANCE_CONFIG_DIR = $(SYSCONFDIR)/$(GAME)
 BACKUP_DEST = $(SERVER_ROOT)/backup
 BACKUP_PATHS = world
 BACKUP_FLAGS = -z
 KEEP_BACKUPS = 10
 GAME_USER = $(GAME)
 MAIN_EXECUTABLE = minecraft_server.jar
+ifeq ($(MAIN_EXECUTABLE),$(MAIN_EXECUTABLE:/%=))
+MAIN_EXECUTABLE_ABSOLUTE = $(SERVER_ROOT)/$(MAIN_EXECUTABLE)
+else
+MAIN_EXECUTABLE_ABSOLUTE = $(MAIN_EXECUTABLE)
+endif
+TMUX_SOCKET_DIR = /run/$(GAME)/tmux
 SESSION_NAME = $(GAME)
 SERVER_START_CMD = java -Xms512M -Xmx1024M -jar ./$${MAIN_EXECUTABLE} nogui
 SERVER_START_SUCCESS = done
@@ -40,12 +49,17 @@ define replace_all
 		-e 's#@INAME@#$(INAME)#g' \
 		-e 's#@GAME@#$(GAME)#g' \
 		-e 's#@SERVER_ROOT@#$(SERVER_ROOT)#g' \
+		-e 's#@CONFIG_PATH@#$(CONFIG_PATH)#g' \
+		-e 's#@SYSCONFDIR@#$(SYSCONFDIR)#g' \
+		-e 's#@INSTANCE_CONFIG_DIR@#$(INSTANCE_CONFIG_DIR)#g' \
 		-e 's#@BACKUP_DEST@#$(BACKUP_DEST)#g' \
 		-e 's#@BACKUP_PATHS@#$(BACKUP_PATHS)#g' \
 		-e 's#@BACKUP_FLAGS@#$(BACKUP_FLAGS)#g' \
 		-e 's#@KEEP_BACKUPS@#$(KEEP_BACKUPS)#g' \
 		-e 's#@GAME_USER@#$(GAME_USER)#g' \
 		-e 's#@MAIN_EXECUTABLE@#$(MAIN_EXECUTABLE)#g' \
+		-e 's#@MAIN_EXECUTABLE_ABSOLUTE@#$(MAIN_EXECUTABLE_ABSOLUTE)#g' \
+		-e 's#@TMUX_SOCKET_DIR@#$(TMUX_SOCKET_DIR)#g' \
 		-e 's#@SESSION_NAME@#$(SESSION_NAME)#g' \
 		-e 's#@SERVER_START_CMD@#$(SERVER_START_CMD)#g' \
 		-e 's#@SERVER_START_SUCCESS@#$(SERVER_START_SUCCESS)#g' \
@@ -92,6 +106,9 @@ install:
 	$(INSTALL_DATA) -D minecraftd.service        "$(DESTDIR)$(libdir)/systemd/system/$(INAME).service"
 	$(INSTALL_DATA) -D minecraftd-backup.service "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup.service"
 	$(INSTALL_DATA) -D minecraftd-backup.timer   "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup.timer"
+	$(INSTALL_DATA) -D minecraftd@.service        "$(DESTDIR)$(libdir)/systemd/system/$(INAME)@.service"
+	$(INSTALL_DATA) -D minecraftd-backup@.service "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup@.service"
+	$(INSTALL_DATA) -D minecraftd-backup@.timer   "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup@.timer"
 	$(INSTALL_DATA) -D minecraftd.sysusers       "$(DESTDIR)$(libdir)/sysusers.d/$(INAME).conf"
 	$(INSTALL_DATA) -D minecraftd.tmpfiles       "$(DESTDIR)$(libdir)/tmpfiles.d/$(INAME).conf"
 

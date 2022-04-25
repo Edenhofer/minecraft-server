@@ -1,0 +1,31 @@
+[Unit]
+Description=@GAME@ Server - %i instance
+After=local-fs.target network.target multi-user.target
+
+[Service]
+Type=forking
+Environment=SERVER_ROOT=@SERVER_ROOT@/servers/%i
+Environment=BACKUP_DEST=@SERVER_ROOT@/servers/%i/backup
+Environment=SESSION_NAME=@GAME@-%i
+EnvironmentFile=-@INSTANCE_CONFIG_DIR@/%i
+# create the "servers" directory followed by the instance directory
+ExecStartPre=+/bin/bash -c "/bin/test -d @SERVER_ROOT@/servers || /bin/install -d -m 0750 -o @GAME_USER@ -g @GAME_USER@ @SERVER_ROOT@/servers"
+ExecStartPre=+/bin/bash -c "/bin/test -d @SERVER_ROOT@/servers/%i || /bin/install -d -m 0750 -o @GAME_USER@ -g @GAME_USER@ @SERVER_ROOT@/servers/%i"
+ExecStart=/usr/bin/@INAME@ start
+ExecStop=/usr/bin/@INAME@ stop
+User=@GAME_USER@
+Group=@GAME_USER@
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=/usr /bin /lib -/lib64 @CONFIG_PATH@
+# Prevent the minecraft server itself from tampering with backups. This means a
+# compromised server would not be able to delete backups.
+PrivateTmp=yes
+TemporaryFileSystem=@SERVER_ROOT@/servers:ro
+BindPaths=@TMUX_SOCKET_DIR@ -@SERVER_ROOT@/servers/%i
+InaccessiblePaths=-@SERVER_ROOT@/servers/%i/backup
+# Make paths related to the non-instantiated server inaccessible.
+InaccessiblePaths=-@SERVER_ROOT@/world -@SERVER_ROOT@/world_nether -@SERVER_ROOT@/world_the_end -@SERVER_ROOT@/plugins -@SERVER_ROOT@/logs -@SERVER_ROOT@/backup
+
+[Install]
+WantedBy=multi-user.target
