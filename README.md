@@ -61,7 +61,13 @@ Use the minecraft script under /usr/bin/minecraftd to start, stop or backup the 
 
 ### How to configure the Server
 
-Adjust the configuration file under /etc/conf.d/minecraft to your liking.
+Adjust the configuration file under `/etc/conf.d/minecraft` to your liking.
+
+If you are running multiple servers, the configuration file `/etc/minecraft/<instance name>` will be loaded if it exists, and will supersede any options set in the global configuration.
+
+Any configuration variable can be overridden in the environment.
+
+To see the effective configuration based on the instance name and all applicable configuration files, run `minecraftd print`, `minecraftd -i server2 print`, etc. To print the plain value of a single configuration key, use the `-k` argument: `minecraftd print -k SERVER_ROOT`.
 
 ### Server does not start
 
@@ -83,31 +89,13 @@ systemctl start minecraftd@server-name        #      (it should start this time)
 
 To facilitate the use of a unique environment variable file per instance, the file `/etc/minecraft/<instance name>` is read in addition to the global environment file, `/etc/conf.d/minecraft`. Note that `minecraft` is the value of the `@GAME@` macro in this case, so change this to `/etc/spigot/<instance name>`, etc. Values in the instance-specific environment file take precedence over values in the global configuration.
 
-Behind the scenes, the systemd instantiated unit achieves instantiation by changing several environment variables as follows (where `%i` is the instance name, and `@SERVER_ROOT` defaults to `/srv/@GAME@`):
+The configuration variables whose defaults change in instantiated mode are:
 
-* `SERVER_ROOT=@SERVER_ROOT@/servers/%i`
-* `BACKUP_DEST=@SERVER_ROOT@/servers/%i/backup`
-* `SESSION_NAME=@GAME@-%i`
+* `SERVER_ROOT` changes from `/srv/minecraft` to `/srv/minecraft/servers/<instance name>`
+* `SESSION_NAME` changes from `minecraft` to `minecraft-<instance name>`
+* `BACKUP_DEST` changes from `/srv/minecraft/backup` to `/srv/minecraft/servers/<instance name>/backup`
 
-This means that attempting to override these environment variables in the per-instance environment file may result in the server not starting or files being in the wrong location.
-
-If you need to start an instantiated server manually for some reason, you can do:
-
-```sh
-env SERVER_ROOT=/srv/minecraft/servers/creative \
-    SESSION_NAME=minecraft-creative \
-    minecraftd start
-```
-
-To attach to the console, just override the `SESSION_NAME` variable with `minecraft-` followed by the instance name:
-
-```sh
-$ SESSION_NAME=minecraft-creative minecraftd console
-```
-
-In the above example, `minecraft` is the value of the `@GAME@` macro, so you might need `spigot-creative`, `papermc-creative`, etc.
-
-To take a backup, use instantiated variants of the service and timer, or set `BACKUP_DEST` alongside `SERVER_ROOT` and `SESSION_NAME` when running `minecraftd backup`.
+These can also be overridden in the instance-specific configuration file, `/etc/minecraft/<instance name>`.
 
 ## License
 

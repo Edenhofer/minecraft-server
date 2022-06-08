@@ -3,48 +3,137 @@
 # The actual program name (name of the interface)
 declare -r INAME="@INAME@"
 declare -r GAME="@GAME@"
+declare -r LIBRARY_PATH="@LIBRARY_PATH@"
+
+test -r "$LIBRARY_PATH/argparse.sh" || (echo "Cannot find argparse.sh in $LIBRARY_PATH" >&2; exit 1)
+
+# Note: this calls "set -u" to disallow the use of uninitialized variables.
+source "$LIBRARY_PATH/argparse.sh"
+
+DESCRIPTION="This script was designed to easily control any ${GAME} server. Almost\n"
+DESCRIPTION+="any parameter for a given	${GAME} server derivative can be changed by\n"
+DESCRIPTION+="editing the variables in the configuration file."
+
+COPYRIGHT="Report bugs to <https://github.com/Edenhofer/minecraft-server>.\n"
+COPYRIGHT+="Copyright (c) Gordian Edenhofer <gordian.edenhofer@gmail.com>\n"
+COPYRIGHT+="and contributors (see: https://github.com/Edenhofer/minecraft-server/graphs/contributors)\n"
+COPYRIGHT+="\n"
+COPYRIGHT+="This program is free software; you can redistribute it and/or\n"
+COPYRIGHT+="modify it under the terms of the GNU General Public License\n"
+COPYRIGHT+="as published by the Free Software Foundation; either version 2\n"
+COPYRIGHT+="of the License, or (at your option) any later version.\n"
+COPYRIGHT+="\n"
+COPYRIGHT+="For details, see: https://github.com/Edenhofer/minecraft-server#license"
+
+add_subcommand start "Start the server instance."
+add_subcommand stop "Stop the server instance."
+add_subcommand status "Check status of a running server instance."
+add_subcommand restart "Restart the server instance."
+add_subcommand console "Attach to the server console. Press Ctrl+B and then Ctrl+D to detach (by default; your tmux settings may be different)."
+add_subcommand command "Run a command on the server console and report the result."
+add_subcommand backup "Immediately take a backup of the server. Backups are written to the directory specified in the BACKUP_DEST configuration variable."
+add_subcommand restore "Restore a server backup from an archive file."
+add_subcommand print "Print a variable from the configuration."
+add_subcommand init "Create directories for the server."
+add_subcommand idle_server_daemon "Internal use only"
+
+add_arg i instance SERVER_INSTANCE "Server instance. Multiple instances of @GAME@ can run concurrently. If omitted, the default instance is used." false
+add_arg c command command:SERVER_COMMAND "Command to run" true
+add_arg a archive restore:ARCHIVE_PATH "Path to the backup archive to restore." true
+add_arg k key print:CONFIG_VAR "Configuration variable to print (SERVER_ROOT, SESSION_NAME, etc.). If omitted, prints the entire configuration." false
+
+parse_args "$@"
 
 # General rule for the variable-naming-schema:
 # Variables in capital letters may be passed through the command line others not.
 # Avoid altering any of those later in the code since they may be readonly (IDLE_SERVER is an exception!)
 
 # You may use this script for any game server of your choice, just alter the config file
-[[ -n "${SESSION_NAME}" ]]    && declare -r session_name_overridden=true       || declare -r session_name_overridden=false
-[[ -n "${SERVER_ROOT}" ]]     && declare -r SERVER_ROOT=${SERVER_ROOT}         || SERVER_ROOT="@SERVER_ROOT@"
-[[ -n "${CONFIG_PATH}" ]]     && declare -r CONFIG_PATH=${CONFIG_PATH}         || CONFIG_PATH="@CONFIG_PATH@"
-[[ -n "${BACKUP_DEST}" ]]     && declare -r BACKUP_DEST=${BACKUP_DEST}         || BACKUP_DEST="@BACKUP_DEST@"
-[[ -n "${BACKUP_PATHS}" ]]    && declare -r BACKUP_PATHS=${BACKUP_PATHS}       || BACKUP_PATHS="@BACKUP_PATHS@"
-[[ -n "${BACKUP_FLAGS}" ]]    && declare -r BACKUP_FLAGS=${BACKUP_FLAGS}       || BACKUP_FLAGS="@BACKUP_FLAGS@"
-[[ -n "${KEEP_BACKUPS}" ]]    && declare -r KEEP_BACKUPS=${KEEP_BACKUPS}       || KEEP_BACKUPS="@KEEP_BACKUPS@"
-[[ -n "${GAME_USER}" ]]       && declare -r GAME_USER=${GAME_USER}             || GAME_USER="@GAME_USER@"
-[[ -n "${MAIN_EXECUTABLE}" ]] && declare -r MAIN_EXECUTABLE=${MAIN_EXECUTABLE} || MAIN_EXECUTABLE="@MAIN_EXECUTABLE_ABSOLUTE@"
-[[ -n "${SESSION_NAME}" ]]    && declare -r SESSION_NAME=${SESSION_NAME}       || SESSION_NAME="@SESSION_NAME@"
+declare -A default_config
+default_config[SESSION_NAME]="@SESSION_NAME@"
+default_config[SERVER_ROOT]="@SERVER_ROOT@"
+default_config[CONFIG_PATH]="@CONFIG_PATH@"
+default_config[INSTANCE_CONFIG_DIR]="@INSTANCE_CONFIG_DIR@"
+default_config[BACKUP_DEST]="@BACKUP_DEST@"
+default_config[BACKUP_PATHS]="@BACKUP_PATHS@"
+default_config[BACKUP_FLAGS]="@BACKUP_FLAGS@"
+default_config[KEEP_BACKUPS]="@KEEP_BACKUPS@"
+default_config[GAME_USER]="@GAME_USER@"
+default_config[MAIN_EXECUTABLE]="@MAIN_EXECUTABLE_ABSOLUTE@"
+default_config[SESSION_NAME]="@SESSION_NAME@"
 
 # Command and parameter declaration with which to start the server
-[[ -n "${SERVER_START_CMD}" ]] && declare -r SERVER_START_CMD=${SERVER_START_CMD} || SERVER_START_CMD="@SERVER_START_CMD@"
-[[ -n "${SERVER_START_SUCCESS}" ]] && declare -r SERVER_START_SUCCESS=${SERVER_START_SUCCESS} || SERVER_START_SUCCESS="@SERVER_START_SUCCESS@"
+default_config[SERVER_MEMORY_INITIAL]="@SERVER_MEMORY_INITIAL@"
+default_config[SERVER_MEMORY_MAXIMUM]="@SERVER_MEMORY_MAXIMUM@"
+default_config[SERVER_START_CMD]="@SERVER_START_CMD@"
+default_config[SERVER_START_SUCCESS]="@SERVER_START_SUCCESS@"
 
 # System parameters for the control script
-[[ -n "${IDLE_SERVER}" ]]       && tmp_IDLE_SERVER=${IDLE_SERVER}   || IDLE_SERVER="@IDLE_SERVER@"
-[[ -n "${IDLE_SESSION_NAME}" ]] && declare -r IDLE_SESSION_NAME=${IDLE_SESSION_NAME} || IDLE_SESSION_NAME="@IDLE_SESSION_NAME@"
-[[ -n "${GAME_PORT}" ]]         && declare -r GAME_PORT=${GAME_PORT}       || GAME_PORT="@GAME_PORT@"
-[[ -n "${CHECK_PLAYER_TIME}" ]] && declare -r CHECK_PLAYER_TIME=${CHECK_PLAYER_TIME} || CHECK_PLAYER_TIME="@CHECK_PLAYER_TIME@"
-[[ -n "${IDLE_IF_TIME}" ]]      && declare -r IDLE_IF_TIME=${IDLE_IF_TIME} || IDLE_IF_TIME="@IDLE_IF_TIME@"
+default_config[IDLE_SERVER]="@IDLE_SERVER@"
+default_config[IDLE_SESSION_NAME]="@IDLE_SESSION_NAME@"
+default_config[GAME_PORT]="@GAME_PORT@"
+default_config[CHECK_PLAYER_TIME]="@CHECK_PLAYER_TIME@"
+default_config[IDLE_IF_TIME]="@IDLE_IF_TIME@"
 
 # Additional configuration options which only few may need to alter
-[[ -n "${GAME_COMMAND_DUMP}" ]] && declare -r GAME_COMMAND_DUMP=${GAME_COMMAND_DUMP} || GAME_COMMAND_DUMP="@GAME_COMMAND_DUMP@"
+default_config[GAME_COMMAND_DUMP]="@GAME_COMMAND_DUMP@"
+
+# Variables whose defaults get overridden in instantiated mode. %i is substituted with the instance name.
+declare -A instance_config
+instance_config[SESSION_NAME]="@GAME@-%i"
+instance_config[SERVER_ROOT]="@SERVER_ROOT@/servers/%i"
+instance_config[BACKUP_DEST]="@SERVER_ROOT@/servers/%i/backup"
+
+# Variables set through the environment can never be overridden by config files.
+declare -A environment_overrides
+# Variables set through instance_config can be overridden by the instance config file, but not by the
+# global configuration file.
+declare -A instance_overrides
+
+# Gather environment variables and make note of overrides.
+for var in ${!default_config[@]}; do
+	if [[ -v $var ]]; then
+		echo "Configuration variable overridden by environment: ${var}=${!var}" >&2
+		environment_overrides[$var]="${!var}"
+		continue
+	fi
+
+	if [[ -v SERVER_INSTANCE && -v instance_config[$var] ]]; then
+		instance_overrides[$var]="${instance_config[$var]//%i/${SERVER_INSTANCE}}"
+	else
+		declare $var="${default_config[$var]}"
+	fi
+done
 
 # Variables passed over the command line will always override the one from a config file
 if test -r "${CONFIG_PATH}"; then
 	source "${CONFIG_PATH}" || (echo "Could not source ${CONFIG_PATH}" >&2)
 fi
 
-# Preserve the content of IDLE_SERVER without making it readonly
-[[ -n ${tmp_IDLE_SERVER} ]] && IDLE_SERVER=${tmp_IDLE_SERVER}
+# Restore config variables that are always instance-specific.
+for var in ${!instance_overrides[@]}; do
+	declare $var="${instance_overrides[$var]}"
+done
 
+# Load the instance-specific configuration if it exists.
+if [[ -v SERVER_INSTANCE ]]; then
+	INSTANCE_CONFIG_PATH="${INSTANCE_CONFIG_DIR}/${SERVER_INSTANCE}"
+	if test -r "${INSTANCE_CONFIG_PATH}"; then
+		source "${INSTANCE_CONFIG_PATH}" || (echo "Could not source ${INSTANCE_CONFIG_PATH}" >&2)
+	fi
+fi
 
-# Strictly disallow uninitialized Variables
-set -u
+# Expand macros in the config and set final values.
+# These are set to readonly so they cannot be accidentally changed later.
+for var in ${!default_config[@]}; do
+	value="${environment_overrides[$var]:-${!var}}"
+	for ivar in ${!default_config[@]} INAME GAME_USER; do
+		value="${value//@$ivar@/${!ivar}}"
+	done
+	
+	declare -r $var="$value"
+done
+
 # Exit if a single command breaks and its failure is not handled accordingly
 set -e
 
@@ -61,7 +150,7 @@ fi
 # directory includes the uid. The systemd sandboxing uses a private /tmp,
 # so to expose the tmux socket directory to the host we need to change to
 # a socket path that uses the user id.
-GAME_USER_UID=$(${SUDO_CMD} id -u)
+GAME_USER_UID=$(id -u ${GAME_USER})
 LEGACY_TMUX_SOCKET_PATH="/tmp/tmux-${GAME_USER_UID}/${SESSION_NAME}"
 TMUX_SOCKET_PATH="@TMUX_SOCKET_DIR@/${SESSION_NAME}"
 # Look for the old socket path prior to version upgrade. If we find it,
@@ -83,10 +172,12 @@ else
 	NETCAT_CMD=""
 fi
 
-# Check for sudo rigths
-if [[ "$(${SUDO_CMD} whoami)" != "${GAME_USER}" ]]; then
-	>&2 echo -e "You have \e[39;1mno permission\e[0m to run commands as $GAME_USER user."
-	exit 21
+# Check for sudo rights
+if [[ "${COMMAND}" != "print" ]]; then
+	if [[ "$(${SUDO_CMD} whoami)" != "${GAME_USER}" ]]; then
+		>&2 echo -e "You have \e[39;1mno permission\e[0m to run commands as $GAME_USER user."
+		exit 21
+	fi
 fi
 
 # Pipe any given argument to the game server console,
@@ -154,7 +245,7 @@ idle_server_daemon() {
 				no_player=$(( no_player + CHECK_PLAYER_TIME ))
 				# Stop the game server if no player was active for at least ${IDLE_IF_TIME}
 				if [[ "${no_player}" -ge "${IDLE_IF_TIME}" ]]; then
-					IDLE_SERVER="false" ${INAME} stop
+					env IDLE_SERVER="false" ${INAME} stop
 					# Wait for game server to go down
 					for i in {1..100}; do
 						socket_has_session "${SESSION_NAME}" || break
@@ -167,7 +258,7 @@ idle_server_daemon() {
 					echo -n "Netcat: "
 					${NETCAT_CMD} -v -l -p ${GAME_PORT} 2>&1 | (grep -m1 -i "connect" && pkill -P $$ ${NETCAT_CMD}) || true
 					echo "Netcat caught a connection. The server is coming up again..."
-					IDLE_SERVER="false" ${INAME} start
+					env IDLE_SERVER="false" ${INAME} start
 				fi
 			else
 				# Reset timer since there is an active player on the server
@@ -180,7 +271,7 @@ idle_server_daemon() {
 			echo -n "Netcat: "
 			${NETCAT_CMD} -v -l -p ${GAME_PORT} 2>&1 | (grep -m1 -i "connect" && pkill -P $$ ${NETCAT_CMD}) || true
 			echo "Netcat caught a connection. The server is coming up again..."
-			IDLE_SERVER="false" ${INAME} start
+			env IDLE_SERVER="false" ${INAME} start
 		fi
 	done
 }
@@ -497,27 +588,30 @@ socket_session_is_alive() {
 	fi
 }
 
-# Help function, no arguments required
-help() {
-	cat <<-EOF
-	This script was designed to easily control any ${GAME} server. Almost any parameter for a given
-	${GAME} server derivative can be changed by editing the variables in the configuration file.
+print_config() {
+	if [[ -n "$1" ]]; then
+		if [[ ! -v "default_config[$1]" ]]; then
+			echo "$1 is not a recognized configuration variable." >&2
+			return 1
+		fi
 
-	Usage: ${INAME} {start|stop|restart|status|backup|restore|command <command>|console}
-	    start                Start the ${GAME} server
-	    stop                 Stop the ${GAME} server
-	    restart              Restart the ${GAME} server
-	    status               Print some status information
-	    backup               Backup the world data
-	    restore [filename]   Restore the world data from a backup
-	    command <command>    Run the given command at the ${GAME} server console
-	    console              Enter the server console through a tmux session
-
-	Copyright (c) Gordian Edenhofer <gordian.edenhofer@gmail.com>
-	EOF
+		echo "${!1}"
+	else
+		(
+			for var in ${!default_config[@]}; do
+				echo "$var=${!var}"
+			done
+		) | sort
+	fi
 }
 
-case "${1:-}" in
+init_directories() {
+	for dir in $SERVER_ROOT $BACKUP_DEST; do
+		$SUDO_CMD install -D -d -m 0700 $dir
+	done
+}
+
+case "$COMMAND" in
 	start)
 	server_start
 	;;
@@ -539,7 +633,7 @@ case "${1:-}" in
 	;;
 
 	command)
-	server_command "${@:2}"
+	server_command "${SERVER_COMMAND}"
 	;;
 
 	backup)
@@ -547,22 +641,20 @@ case "${1:-}" in
 	;;
 
 	restore)
-	backup_restore "${@:2}"
+	backup_restore "${ARCHIVE_PATH}"
+	;;
+
+	print)
+	print_config "${CONFIG_VAR:-}"
+	;;
+
+	init)
+	init_directories
 	;;
 
 	idle_server_daemon)
 	# This shall be a hidden function which should only be invoked internally
 	idle_server_daemon
-	;;
-
-	-h|--help)
-	help
-	exit 0
-	;;
-
-	*)
-	help
-	exit 1
 	;;
 esac
 
