@@ -123,6 +123,12 @@ if [[ -v SERVER_INSTANCE ]]; then
 	fi
 fi
 
+# Save the instance argument for launches of e.g. the idle server
+INSTANCE_ARG=""
+if [[ -v SERVER_INSTANCE ]]; then
+	INSTANCE_ARG="--instance=${SERVER_INSTANCE}"
+fi
+
 # Expand macros in the config and set final values.
 # These are set to readonly so they cannot be accidentally changed later.
 for var in ${!default_config[@]}; do
@@ -245,7 +251,7 @@ idle_server_daemon() {
 				no_player=$(( no_player + CHECK_PLAYER_TIME ))
 				# Stop the game server if no player was active for at least ${IDLE_IF_TIME}
 				if [[ "${no_player}" -ge "${IDLE_IF_TIME}" ]]; then
-					env IDLE_SERVER="false" ${INAME} stop
+					env IDLE_SERVER="false" ${INAME} ${INSTANCE_ARG} stop
 					# Wait for game server to go down
 					for i in {1..100}; do
 						socket_has_session "${SESSION_NAME}" || break
@@ -258,7 +264,7 @@ idle_server_daemon() {
 					echo -n "Netcat: "
 					${NETCAT_CMD} -v -l -p ${GAME_PORT} 2>&1 | (grep -m1 -i "connect" && pkill -P $$ ${NETCAT_CMD}) || true
 					echo "Netcat caught a connection. The server is coming up again..."
-					env IDLE_SERVER="false" ${INAME} start
+					env IDLE_SERVER="false" ${INAME} ${INSTANCE_ARG} start
 				fi
 			else
 				# Reset timer since there is an active player on the server
@@ -271,7 +277,7 @@ idle_server_daemon() {
 			echo -n "Netcat: "
 			${NETCAT_CMD} -v -l -p ${GAME_PORT} 2>&1 | (grep -m1 -i "connect" && pkill -P $$ ${NETCAT_CMD}) || true
 			echo "Netcat caught a connection. The server is coming up again..."
-			env IDLE_SERVER="false" ${INAME} start
+			env IDLE_SERVER="false" ${INAME} ${INSTANCE_ARG} start
 		fi
 	done
 }
@@ -331,14 +337,14 @@ server_start() {
 			for i in {1..100}; do
 				sleep 0.1
 				if ! socket_has_session "${IDLE_SESSION_NAME}"; then
-					${TMUX_CMD} new-session -s "${IDLE_SESSION_NAME}" -d "${INAME} idle_server_daemon"
+					${TMUX_CMD} new-session -s "${IDLE_SESSION_NAME}" -d "${INAME} ${INSTANCE_ARG} idle_server_daemon"
 					break
 				fi
 				[[ $i -eq 100 ]] && echo -e "An \e[39;1merror\e[0m occurred while trying to reset the idle_server!"
 			done
 		else
 			echo -en "Starting idle server daemon..."
-			${TMUX_CMD} new-session -s "${IDLE_SESSION_NAME}" -d "${INAME} idle_server_daemon"
+			${TMUX_CMD} new-session -s "${IDLE_SESSION_NAME}" -d "${INAME} ${INSTANCE_ARG} idle_server_daemon"
 			echo -e "\e[39;1m done\e[0m"
 		fi
 	fi
