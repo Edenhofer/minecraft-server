@@ -116,6 +116,7 @@ install:
 	$(INSTALL_DATA) -D minecraftd-backup.service  "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup.service"
 	$(INSTALL_DATA) -D minecraftd-backup.timer    "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup.timer"
 	$(INSTALL_DATA) -D minecraftd@.service        "$(DESTDIR)$(libdir)/systemd/system/$(INAME)@.service"
+	$(INSTALL_DATA) -D minecraftd-init@.service   "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-init@.service"
 	$(INSTALL_DATA) -D minecraftd-backup@.service "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup@.service"
 	$(INSTALL_DATA) -D minecraftd-backup@.timer   "$(DESTDIR)$(libdir)/systemd/system/$(INAME)-backup@.timer"
 	$(INSTALL_DATA) -D minecraftd.sysusers        "$(DESTDIR)$(libdir)/sysusers.d/$(INAME).conf"
