@@ -1,0 +1,25 @@
+[Unit]
+Description=@GAME@ Server - %i instance
+After=local-fs.target network.target multi-user.target @GAME@-init@%i.service
+Requires=@GAME@-init@%i.service
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/@INAME@ -i %i start
+ExecStop=/usr/bin/@INAME@ -i %i stop
+User=@GAME_USER@
+Group=@GAME_USER@
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=/usr /bin /lib -/lib64 @CONFIG_PATH@
+# Prevent the minecraft server itself from tampering with backups. This means a
+# compromised server would not be able to delete backups.
+PrivateTmp=yes
+TemporaryFileSystem=@SERVER_ROOT@/servers:ro
+BindPaths=@TMUX_SOCKET_DIR@ -@SERVER_ROOT@/servers/%i
+InaccessiblePaths=-@SERVER_ROOT@/servers/%i/backup
+# Make paths related to the non-instantiated server inaccessible.
+InaccessiblePaths=-@SERVER_ROOT@/world -@SERVER_ROOT@/world_nether -@SERVER_ROOT@/world_the_end -@SERVER_ROOT@/plugins -@SERVER_ROOT@/logs -@SERVER_ROOT@/backup
+
+[Install]
+WantedBy=multi-user.target

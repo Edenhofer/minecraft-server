@@ -1,0 +1,12 @@
+[Unit]
+Description=Create server directories for @GAME@ %i instance
+After=local-fs.target network.target multi-user.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+# create the "servers" directory followed by the instance directory
+ExecStart=/usr/bin/@INAME@ -i %i init
+
+[Install]
+WantedBy=multi-user.target

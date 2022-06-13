@@ -8,6 +8,15 @@ ExecStart=/usr/bin/@INAME@ start
 ExecStop=/usr/bin/@INAME@ stop
 User=@GAME_USER@
 Group=@GAME_USER@
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=/usr /bin /lib -/lib64 @CONFIG_PATH@
+ReadWritePaths=@SERVER_ROOT@
+# Prevent the minecraft server itself from tampering with backups. This means a
+# compromised server would not be able to delete backups.
+InaccessiblePaths=-@SERVER_ROOT@/backup
+PrivateTmp=yes
+BindPaths=@TMUX_SOCKET_DIR@
 
 [Install]
 WantedBy=multi-user.target
