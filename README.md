@@ -21,6 +21,7 @@ While the server is offline, the script can listen on the minecraft port for inc
 
 * netcat -- listen on the minecraft port for incoming connections while the server is down (optional)
 * tar -- take world backups (optional)
+* borg -- take world backups with incremental backups (optional)
 
 ### Build
 
