@@ -5,8 +5,11 @@
 SERVER_ROOT="@SERVER_ROOT@"
 BACKUP_DEST="@BACKUP_DEST@"
 BACKUP_PATHS="@BACKUP_PATHS@" # World paths separated by spaces relative to SERVER_ROOT
-BACKUP_FLAGS="@BACKUP_FLAGS@"
-KEEP_BACKUPS="@KEEP_BACKUPS@"
+BACKUP_METHOD="@BACKUP_METHOD@" # either 'tar' for tar archive or 'borg' for borg deduplicating backups
+BACKUP_FLAGS="@BACKUP_FLAGS@" # Only for 'tar' backups, for 'borg' see BORG_BACKUP_FLAGS
+KEEP_BACKUPS="@KEEP_BACKUPS@" # Only for 'tar' backups, for 'borg' see BORG_PRUNE_FLAGS
+BORG_BACKUP_FLAGS="@BORG_BACKUP_FLAGS@"
+BORG_PRUNE_FLAGS="@BORG_PRUNE_FLAGS@" # to fine tune how many archive borg keeps per day / week / month see "man borg prune"
 GAME_USER="@GAME_USER@"
 MAIN_EXECUTABLE="@MAIN_EXECUTABLE@"
 SESSION_NAME="@SESSION_NAME@"

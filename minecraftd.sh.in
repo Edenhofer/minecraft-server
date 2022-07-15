@@ -12,8 +12,11 @@ declare -r GAME="@GAME@"
 [[ -n "${SERVER_ROOT}" ]]  && declare -r SERVER_ROOT=${SERVER_ROOT}   || SERVER_ROOT="@SERVER_ROOT@"
 [[ -n "${BACKUP_DEST}" ]]  && declare -r BACKUP_DEST=${BACKUP_DEST}   || BACKUP_DEST="@BACKUP_DEST@"
 [[ -n "${BACKUP_PATHS}" ]] && declare -r BACKUP_PATHS=${BACKUP_PATHS} || BACKUP_PATHS="@BACKUP_PATHS@"
+[[ -n "${BACKUP_METHOD}" ]]     && declare -r BACKUP_METHOD=${BACKUP_METHOD}            || BACKUP_METHOD="@BACKUP_METHOD@"
 [[ -n "${BACKUP_FLAGS}" ]] && declare -r BACKUP_FLAGS=${BACKUP_FLAGS} || BACKUP_FLAGS="@BACKUP_FLAGS@"
 [[ -n "${KEEP_BACKUPS}" ]] && declare -r KEEP_BACKUPS=${KEEP_BACKUPS} || KEEP_BACKUPS="@KEEP_BACKUPS@"
+[[ -n "${BORG_BACKUP_FLAGS}" ]] && declare -r BORG_BACKUP_FLAGS=${BORG_BACKUP_FLAGS}    || BORG_BACKUP_FLAGS="@BORG_BACKUP_FLAGS@"
+[[ -n "${BORG_PRUNE_FLAGS}" ]]  && declare -r BORG_PRUNE_FLAGS=${BORG_PRUNE_FLAGS}      || BORG_PRUNE_FLAGS="@BORG_PRUNE_FLAGS@"
 [[ -n "${GAME_USER}" ]]    && declare -r GAME_USER=${GAME_USER}       || GAME_USER="@GAME_USER@"
 [[ -n "${MAIN_EXECUTABLE}" ]] && declare -r MAIN_EXECUTABLE=${MAIN_EXECUTABLE} || MAIN_EXECUTABLE="@MAIN_EXECUTABLE@"
 [[ -n "${SESSION_NAME}" ]] && declare -r SESSION_NAME=${SESSION_NAME} || SESSION_NAME="@SESSION_NAME@"
@@ -364,6 +367,37 @@ backup_files() {
 	fi
 }
 
+# Backup the directories specified in BACKUP_PATHS with borg
+backup_files_borg() {
+	# Check for the availability of the tar binaries
+	if ! command -v borg &> /dev/null; then
+		>&2 echo "The borg binaries are needed for a backup."
+		exit 11
+	fi
+
+	echo "Starting backup..."
+	fname="$(date +%Y_%m_%d_%H.%M.%S)"
+	if ! test -d "${BACKUP_DEST}"; then
+		${SUDO_CMD} mkdir -p "${BACKUP_DEST}"
+		${SUDO_CMD} borg init --encryption none "${BACKUP_DEST}"
+	fi
+	if socket_has_session "${SESSION_NAME}"; then
+		game_command save-off
+		game_command save-all
+		sleep "${sleep_time:-0.3}"
+		sync && wait
+		cd "${SERVER_ROOT}"
+		${SUDO_CMD} borg create ${BORG_BACKUP_FLAGS} "${BACKUP_DEST}"::"${fname}" ${BACKUP_PATHS} && wait
+		game_command save-on && echo "okk" || echo "broken"
+	else
+		${SUDO_CMD} borg create ${BORG_BACKUP_FLAGS} "${BACKUP_DEST}"::"${fname}" ${BACKUP_PATHS}
+	fi
+	echo -e "\e[39;1mbackup completed\e[0m\n"
+
+	echo "Pruning the repositorie with retention policy: $BORG_PRUNE_FLAGS"
+	${SUDO_CMD} borg prune --list ${BORG_PRUNE_FLAGS} "${BACKUP_DEST}"
+}
+
 # Restore backup
 backup_restore() {
 	# Check for the availability of the tar binaries
@@ -426,6 +460,73 @@ backup_restore() {
 
 	echo "Restoring backup..."
 	if ${SUDO_CMD} tar -xf "${fname}" -C "${SERVER_ROOT}" 2>&1; then
+		echo -e "\e[39;1mRestoration completed\e[0m"
+	else
+		echo -e "\e[39;1mFailed to restore backup.\e[0m"
+	fi
+}
+
+# Restore backup
+backup_restore_borg() {
+	# Check for the availability of the borg binaries
+	if ! command -v borg &> /dev/null; then
+		>&2 echo "The borg binaries are needed for a backup."
+		exit 11
+	fi
+
+	# Only allow the user to restore a backup if the server is down
+	if socket_has_session "${SESSION_NAME}"; then
+		>&2 echo -e "The \e[39;1mserver should be down\e[0m in order to restore the world data."
+		exit 3
+	fi
+
+	# Either let the user choose a backup or expect one as an argument
+	if [[ $# -lt 1 ]]; then
+		echo "Please enter the corresponding number for the backup to be restored: "
+		i=1
+		for f in $(borg list "${BACKUP_DEST}" | cut -f 1 -d ' '); do
+			echo -e "    \e[39;1m$i)\e[0m\t$f"
+			i=$(( i + 1 ))
+		done
+		echo -en "Restore backup number: "
+
+		# Read in user input
+		read -r user_choice
+
+		# Interpeting the input
+		if [[ $user_choice =~ ^-?[0-9]+$ ]]; then
+			n=1
+			for f in $(borg list "${BACKUP_DEST}" | cut -f 1 -d ' '); do
+				[[ ${n} -eq $user_choice ]] && fname="$f"
+				n=$(( n + 1 ))
+			done
+			if [[ -z $fname ]]; then
+				>&2 echo -e "\e[39;1mFailed\e[0m to interpret your input. Please enter the digit of the presented options."
+				exit 5
+			fi
+		else
+			>&2 echo -e "\e[39;1mFailed\e[0m to interpret your input. Please enter a valid digit for one of the presented options."
+			exit 6
+		fi
+	elif [[ $# -eq 1 ]]; then
+		for f in $(borg list "${BACKUP_DEST}" | cut -f 1 -d ' '); do
+			if [[ "$1" = $f ]]; then
+				fname="$1"
+			fi
+		done
+		if [[ -z $fname ]]; then
+			>&2 echo -e "Sorry, but '$1', is \e[39;1mnot a valid borg archive\e[0m in the borg backup repository"
+			exit 4
+		fi
+	elif [[ $# -gt 1 ]]; then
+		>&2 echo -e "\e[39;1mToo many arguments.\e[0m Please pass only the archive name for the world data as an argument."
+		>&2 echo "Or alternatively, no arguments at all to choose from a list of available backups."
+		exit 7
+	fi
+
+	echo "Restoring backup..."
+	cd "${SERVER_ROOT}"
+	if ${SUDO_CMD} borg extract "${BACKUP_DEST}"::"${fname}" 2>&1; then
 		echo -e "\e[39;1mRestoration completed\e[0m"
 	else
 		echo -e "\e[39;1mFailed to restore backup.\e[0m"
@@ -522,11 +623,19 @@ case "${1:-}" in
 	;;
 
 	backup)
-	backup_files
+	if [[ $BACKUP_METHOD = "borg" ]]; then
+		backup_files_borg
+	else
+		backup_files
+	fi
 	;;
 
 	restore)
-	backup_restore "${@:2}"
+	if [[ $BACKUP_METHOD = "borg" ]]; then
+		backup_restore_borg "${@:2}"
+	else
+		backup_restore "${@:2}"
+	fi
 	;;
 
 	idle_server_daemon)
