@@ -1,0 +1,20 @@
+#!/sbin/openrc-run
+
+command=/usr/bin/@INAME@
+command_user="@GAME_USER@:@GAME_USER@"
+pidfile=/run/@INAME@.pid
+
+start() {
+	/usr/bin/@INAME@ start
+}
+
+stop() {
+	/usr/bin/@INAME@ stop
+}
+
+depend() {
+	need net
+}
+
+name="@INAME@"
+description="@GAME@ Server"
