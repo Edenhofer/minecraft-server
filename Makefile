@@ -21,8 +21,7 @@ BACKUP_PATHS = world
 BACKUP_METHOD = tar
 BACKUP_FLAGS = -z
 KEEP_BACKUPS = 10
-BORG_BACKUP_FLAGS = --progress
-BORG_PRUNE_FLAGS = --keep-last 10
+PRUNE_FLAGS =
 GAME_USER = $(GAME)
 MAIN_EXECUTABLE = minecraft_server.jar
 SESSION_NAME = $(GAME)
@@ -48,8 +47,7 @@ define replace_all
 		-e 's#@BACKUP_METHOD@#$(BACKUP_METHOD)#g' \
 		-e 's#@BACKUP_FLAGS@#$(BACKUP_FLAGS)#g' \
 		-e 's#@KEEP_BACKUPS@#$(KEEP_BACKUPS)#g' \
-		-e 's#@BORG_BACKUP_FLAGS@#$(BORG_BACKUP_FLAGS)#g' \
-		-e 's#@BORG_PRUNE_FLAGS@#$(BORG_PRUNE_FLAGS)#g' \
+		-e 's#@PRUNE_FLAGS@#$(PRUNE_FLAGS)#g' \
 		-e 's#@GAME_USER@#$(GAME_USER)#g' \
 		-e 's#@MAIN_EXECUTABLE@#$(MAIN_EXECUTABLE)#g' \
 		-e 's#@SESSION_NAME@#$(SESSION_NAME)#g' \
