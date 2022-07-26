@@ -12,10 +12,10 @@ declare -r GAME="@GAME@"
 [[ -n "${SERVER_ROOT}" ]]  && declare -r SERVER_ROOT=${SERVER_ROOT}   || SERVER_ROOT="@SERVER_ROOT@"
 [[ -n "${BACKUP_DEST}" ]]  && declare -r BACKUP_DEST=${BACKUP_DEST}   || BACKUP_DEST="@BACKUP_DEST@"
 [[ -n "${BACKUP_PATHS}" ]] && declare -r BACKUP_PATHS=${BACKUP_PATHS} || BACKUP_PATHS="@BACKUP_PATHS@"
-[[ -n "${BACKUP_METHOD}" ]]     && declare -r BACKUP_METHOD=${BACKUP_METHOD}            || BACKUP_METHOD="@BACKUP_METHOD@"
+[[ -n "${BACKUP_METHOD}" ]]   && declare -r BACKUP_METHOD=${BACKUP_METHOD}     || BACKUP_METHOD="@BACKUP_METHOD@"
 [[ -n "${BACKUP_FLAGS}" ]] && declare -r BACKUP_FLAGS=${BACKUP_FLAGS} || BACKUP_FLAGS="@BACKUP_FLAGS@"
 [[ -n "${KEEP_BACKUPS}" ]] && declare -r KEEP_BACKUPS=${KEEP_BACKUPS} || KEEP_BACKUPS="@KEEP_BACKUPS@"
-[[ -n "${PRUNE_FLAGS}" ]]  && declare -r PRUNE_FLAGS=${PRUNE_FLAGS}      || PRUNE_FLAGS="@PRUNE_FLAGS@"
+[[ -n "${PRUNE_FLAGS}" ]]  && declare -r PRUNE_FLAGS=${PRUNE_FLAGS}   || PRUNE_FLAGS="@PRUNE_FLAGS@"
 [[ -n "${GAME_USER}" ]]    && declare -r GAME_USER=${GAME_USER}       || GAME_USER="@GAME_USER@"
 [[ -n "${MAIN_EXECUTABLE}" ]] && declare -r MAIN_EXECUTABLE=${MAIN_EXECUTABLE} || MAIN_EXECUTABLE="@MAIN_EXECUTABLE@"
 [[ -n "${SESSION_NAME}" ]] && declare -r SESSION_NAME=${SESSION_NAME} || SESSION_NAME="@SESSION_NAME@"
@@ -478,7 +478,7 @@ help() {
 	EOF
 }
 
-# Each backup methods implements those 5 functions in order to backup / restore worlds
+# Each backup methods MUST implement those 5 functions in order to backup and restore worlds
 if [[ $BACKUP_METHOD == "borg" ]]; then
 	function make_backup () {
 		fname="$(date +%Y_%m_%d_%H.%M.%S)"

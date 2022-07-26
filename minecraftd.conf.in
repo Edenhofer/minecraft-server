@@ -13,7 +13,7 @@ BACKUP_FLAGS="@BACKUP_FLAGS@"
 KEEP_BACKUPS="@KEEP_BACKUPS@"
 PRUNE_FLAGS="@PRUNE_FLAGS@" # Has no effect when BACKUP_METHOD is set to "tar"
 
-# Borg Parameter
+# Borg parameters
 #  To use borg, adapt BACKUP_METHOD , BACKUP_FLAGS and PRUNE_FLAGS accordingly. For example :
 #BACKUP_METHOD="borg"
 #BACKUP_FLAGS="--progress"
