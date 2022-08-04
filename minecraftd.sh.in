@@ -346,7 +346,7 @@ backup_files() {
 		game_command save-all
 		sleep "${sleep_time:-0.3}"
 		sync && wait
-		make_backup
+		make_backup && wait
 		game_command save-on
 	else
 		make_backup
