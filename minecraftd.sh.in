@@ -613,7 +613,7 @@ print_config() {
 
 init_directories() {
 	for dir in $SERVER_ROOT $BACKUP_DEST; do
-		$SUDO_CMD install -D -d -m 0700 $dir
+		$SUDO_CMD test -d "$dir" || $SUDO_CMD install -D -d -m 0700 "$dir"
 	done
 }
 
