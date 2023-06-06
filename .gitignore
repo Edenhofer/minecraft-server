@@ -1,0 +1,11 @@
+minecraftd-backup.service
+minecraftd-backup.timer
+minecraftd-backup@.service
+minecraftd-backup@.timer
+minecraftd-init@.service
+minecraftd.conf
+minecraftd.service
+minecraftd.sh
+minecraftd.sysusers
+minecraftd.tmpfiles
+minecraftd@.service
