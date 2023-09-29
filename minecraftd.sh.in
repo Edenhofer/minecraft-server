@@ -31,6 +31,8 @@ declare -r GAME="@GAME@"
 
 # Additional configuration options which only few may need to alter
 [[ -n "${GAME_COMMAND_DUMP}" ]] && declare -r GAME_COMMAND_DUMP=${GAME_COMMAND_DUMP} || GAME_COMMAND_DUMP="@GAME_COMMAND_DUMP@"
+[[ -n "${MAX_SERVER_START_TIME}" ]] && declare -r MAX_SERVER_START_TIME=${MAX_SERVER_START_TIME} || MAX_SERVER_START_TIME="@MAX_SERVER_START_TIME@"
+[[ -n "${MAX_SERVER_STOP_TIME}" ]] && declare -r MAX_SERVER_STOP_TIME=${MAX_SERVER_STOP_TIME} || MAX_SERVER_STOP_TIME="@MAX_SERVER_STOP_TIME@"
 
 # Variables passed over the command line will always override the one from a config file
 source /etc/conf.d/"${GAME}" 2>/dev/null || >&2 echo "Could not source /etc/conf.d/${GAME}"
@@ -43,8 +45,6 @@ source /etc/conf.d/"${GAME}" 2>/dev/null || >&2 echo "Could not source /etc/conf
 set -u
 # Exit if a single command breaks and its failure is not handled accordingly
 set -e
-
-MAX_SERVER_START_TIME=150
 
 # Check whether sudo is needed at all
 if [[ "$(whoami)" == "${GAME_USER}" ]]; then
@@ -275,13 +275,13 @@ server_stop() {
 		fi
 
 		# Finish as soon as the server has shut down completely
-		for i in {1..100}; do
+		for ((i=1; i<=MAX_SERVER_STOP_TIME; i++)); do
 			if ! socket_has_session "${SESSION_NAME}"; then
 				${SUDO_CMD} rm -f "${GAME_COMMAND_DUMP}"
 				echo -e "\e[39;1m done\e[0m"
 				break
 			fi
-			[[ $i -eq 100 ]] && echo -e "\e[39;1m timed out\e[0m"
+			[[ $i -eq ${MAX_SERVER_STOP_TIME} ]] && echo -e "\e[39;1m timed out\e[0m"
 			sleep 0.1
 		done
 	else
