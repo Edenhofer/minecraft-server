@@ -35,7 +35,7 @@ declare -r GAME="@GAME@"
 [[ -n "${MAX_SERVER_STOP_TIME}" ]] && declare -r MAX_SERVER_STOP_TIME=${MAX_SERVER_STOP_TIME} || MAX_SERVER_STOP_TIME="@MAX_SERVER_STOP_TIME@"
 
 # Variables passed over the command line will always override the one from a config file
-source /etc/conf.d/"${GAME}" 2>/dev/null || >&2 echo "Could not source /etc/conf.d/${GAME}"
+source /etc/conf.d/"@GAME@" 2>/dev/null || >&2 echo "Could not source /etc/conf.d/@GAME@"
 
 # Preserve the content of IDLE_SERVER without making it readonly
 [[ -n ${tmp_IDLE_SERVER} ]] && IDLE_SERVER=${tmp_IDLE_SERVER}
@@ -48,22 +48,22 @@ set -e
 
 # Check whether sudo is needed at all
 if [[ "$(whoami)" == "${GAME_USER}" ]]; then
-	SUDO_CMD=""
+	SUDO_CMD=()
 else
-	SUDO_CMD="sudo -u ${GAME_USER}"
+	SUDO_CMD=("sudo" "-u" "${GAME_USER}")
 fi
 
 # Choose which flavor of netcat is to be used
 if command -v netcat &> /dev/null; then
-	NETCAT_CMD="netcat"
+	NETCAT_CMD=("netcat")
 elif command -v ncat &> /dev/null; then
-	NETCAT_CMD="ncat"
+	NETCAT_CMD=("ncat")
 else
-	NETCAT_CMD=""
+	NETCAT_CMD=()
 fi
 
 # Check for sudo rigths
-if [[ "$(${SUDO_CMD} whoami)" != "${GAME_USER}" ]]; then
+if [[ "$("${SUDO_CMD[@]}" whoami)" != "${GAME_USER}" ]]; then
 	>&2 echo -e "You have \e[39;1mno permission\e[0m to run commands as $GAME_USER user."
 	exit 21
 fi
@@ -71,17 +71,17 @@ fi
 # Pipe any given argument to the game server console,
 # sleep for $sleep_time and return its output if $return_stdout is set
 game_command() {
-	${SUDO_CMD} tmux -L "${SESSION_NAME}" wait-for -L "command_lock"
+	"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" wait-for -L "command_lock"
 	if [[ -z "${return_stdout:-}" ]]; then
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" send-keys -t "${SESSION_NAME}":0.0 "$*" Enter
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" send-keys -t "${SESSION_NAME}":0.0 "$*" Enter
 	else
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0 "cat > ${GAME_COMMAND_DUMP}"
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" send-keys -t "${SESSION_NAME}":0.0 "$*" Enter
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0 "cat > ${GAME_COMMAND_DUMP}"
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" send-keys -t "${SESSION_NAME}":0.0 "$*" Enter
 		sleep "${sleep_time:-0.3}"
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0
-		${SUDO_CMD} cat "${GAME_COMMAND_DUMP}"
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0
+		"${SUDO_CMD[@]}" cat "${GAME_COMMAND_DUMP}"
 	fi
-	${SUDO_CMD} tmux -L "${SESSION_NAME}" wait-for -U "command_lock"
+	"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" wait-for -U "command_lock"
 }
 
 # Check whether there are player on the server through list
@@ -120,7 +120,7 @@ idle_server_daemon() {
 	while true; do
 		printf "no_player: %10ss  check_player_time: %10ss  idle_if_time: %10ss\n" "${no_player}" "${CHECK_PLAYER_TIME}" "${IDLE_IF_TIME}"
 		# Retry in ${CHECK_PLAYER_TIME} seconds
-		sleep ${CHECK_PLAYER_TIME}
+		sleep "${CHECK_PLAYER_TIME}"
 
 		if socket_has_session "${SESSION_NAME}"; then
 			# Game server is up and running
@@ -128,7 +128,7 @@ idle_server_daemon() {
 			if [[ -n "$(tmux -L "${SESSION_NAME}" list-clients -t "${SESSION_NAME}":0.0 2> /dev/null)" ]]; then
 				# An administrator is connected to the console, pause player checking
 				echo "An admin is connected to the console. Pause player checking."
-			elif SUDO_CMD="" is_player_online; then
+			elif SUDO_CMD=("") is_player_online; then
 				# No player was seen on the server through list
 				no_player=$(( no_player + CHECK_PLAYER_TIME ))
 				# Stop the game server if no player was active for at least ${IDLE_IF_TIME}
@@ -144,7 +144,7 @@ idle_server_daemon() {
 					no_player=$(( IDLE_IF_TIME - 300 ))
 					# Game server is down, listen on port ${GAME_PORT} for incoming connections
 					echo -n "Netcat: "
-					${NETCAT_CMD} -v -l -p ${GAME_PORT} 2>&1 | (grep -m1 -i "connect" && pkill -P $$ ${NETCAT_CMD}) || true
+					"${NETCAT_CMD[@]}" -v -l -p "${GAME_PORT}" 2>&1 | (grep -m1 -i "connect" && pkill -P $$ "${NETCAT_CMD[@]}") || true
 					echo "Netcat caught a connection. The server is coming up again..."
 					IDLE_SERVER="false" ${INAME} start
 				fi
@@ -157,7 +157,7 @@ idle_server_daemon() {
 			no_player=$(( IDLE_IF_TIME - 300 ))
 			# Game server is down, listen on port ${GAME_PORT} for incoming connections
 			echo -n "Netcat: "
-			${NETCAT_CMD} -v -l -p ${GAME_PORT} 2>&1 | (grep -m1 -i "connect" && pkill -P $$ ${NETCAT_CMD}) || true
+			"${NETCAT_CMD[@]}" -v -l -p "${GAME_PORT}" 2>&1 | (grep -m1 -i "connect" && pkill -P $$ "${NETCAT_CMD[@]}") || true
 			echo "Netcat caught a connection. The server is coming up again..."
 			IDLE_SERVER="false" ${INAME} start
 		fi
@@ -171,24 +171,24 @@ server_start() {
 		echo "A tmux ${SESSION_NAME} session is already running. Please close it first."
 	else
 		echo -en "Starting server..."
-		${SUDO_CMD} rm -f "${GAME_COMMAND_DUMP}"
+		"${SUDO_CMD[@]}" rm -f "${GAME_COMMAND_DUMP}"
 		# Use a plain file as command buffers for the server startup and switch to a FIFO pipe later
-		${SUDO_CMD} touch "${GAME_COMMAND_DUMP}"
+		"${SUDO_CMD[@]}" touch "${GAME_COMMAND_DUMP}"
 		# Ensure pipe-pine is started before the server itself by splitting the session creation and server startup
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" new-session -s "${SESSION_NAME}" -c "${SERVER_ROOT}" -d /bin/bash
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" new-session -s "${SESSION_NAME}" -c "${SERVER_ROOT}" -d /bin/bash
 		# Mimic GNU screen and allow for both C-a and C-b as prefix
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" set -g prefix2 C-a
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" wait-for -L "command_lock"
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0 "cat > ${GAME_COMMAND_DUMP}"
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" send-keys -t "${SESSION_NAME}":0.0 "exec ${SERVER_START_CMD}" Enter
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" set -g prefix2 C-a
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" wait-for -L "command_lock"
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0 "cat > ${GAME_COMMAND_DUMP}"
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" send-keys -t "${SESSION_NAME}":0.0 "exec ${SERVER_START_CMD}" Enter
 		for ((i=1; i<=MAX_SERVER_START_TIME; i++)); do
 			sleep "${sleep_time:-0.1}"
 			if ! socket_session_is_alive "${SESSION_NAME}"; then
 				echo -e "\e[39;1m failed\e[0m\n"
-				>&2 ${SUDO_CMD} cat "${GAME_COMMAND_DUMP}"
-				${SUDO_CMD} rm -f "${GAME_COMMAND_DUMP}"
+				>&2 "${SUDO_CMD[@]}" cat "${GAME_COMMAND_DUMP}"
+				"${SUDO_CMD[@]}" rm -f "${GAME_COMMAND_DUMP}"
 				# Session is dead but remain-on-exit left it open; close it for sure
-				${SUDO_CMD} tmux -L "${SESSION_NAME}" kill-session -t "${SESSION_NAME}"
+				"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" kill-session -t "${SESSION_NAME}"
 				exit 1
 			elif grep -q -i "${SERVER_START_SUCCESS}" "${GAME_COMMAND_DUMP}"; then
 				echo -e "\e[39;1m done\e[0m"
@@ -198,35 +198,35 @@ server_start() {
 				>&2 echo -e "Server startup has not finished yet; continuing anyways"
 			fi
 		done
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" pipe-pane -t "${SESSION_NAME}":0.0
 		# Let the command buffer be a FIFO pipe
-		${SUDO_CMD} rm -f "${GAME_COMMAND_DUMP}"
-		${SUDO_CMD} mkfifo "${GAME_COMMAND_DUMP}"
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" wait-for -U "command_lock"
+		"${SUDO_CMD[@]}" rm -f "${GAME_COMMAND_DUMP}"
+		"${SUDO_CMD[@]}" mkfifo "${GAME_COMMAND_DUMP}"
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" wait-for -U "command_lock"
 	fi
 
 	if [[ "${IDLE_SERVER,,}" == "true" ]]; then
 		# Check for the availability of the netcat (nc) binaries
-		if [[ -z "${NETCAT_CMD}" ]]; then
+		if [[ -z "${NETCAT_CMD[*]}" ]]; then
 			>&2 echo "The netcat binaries are needed for suspending an idle server."
 			exit 12
 		fi
 
 		# Start the idle server daemon
 		if socket_has_session "${IDLE_SESSION_NAME}"; then
-			${SUDO_CMD} tmux -L "${SESSION_NAME}" kill-session -t "${IDLE_SESSION_NAME}"
+			"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" kill-session -t "${IDLE_SESSION_NAME}"
 			# Restart as soon as the idle_server_daemon has shut down completely
 			for i in {1..100}; do
 				sleep 0.1
 				if ! socket_has_session "${IDLE_SESSION_NAME}"; then
-					${SUDO_CMD} tmux -L "${SESSION_NAME}" new-session -s "${IDLE_SESSION_NAME}" -d "${INAME} idle_server_daemon"
+					"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" new-session -s "${IDLE_SESSION_NAME}" -d "${INAME} idle_server_daemon"
 					break
 				fi
 				[[ $i -eq 100 ]] && echo -e "An \e[39;1merror\e[0m occurred while trying to reset the idle_server!"
 			done
 		else
 			echo -en "Starting idle server daemon..."
-			${SUDO_CMD} tmux -L "${SESSION_NAME}" new-session -s "${IDLE_SESSION_NAME}" -d "${INAME} idle_server_daemon"
+			"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" new-session -s "${IDLE_SESSION_NAME}" -d "${INAME} idle_server_daemon"
 			echo -e "\e[39;1m done\e[0m"
 		fi
 	fi
@@ -237,14 +237,14 @@ server_stop() {
 	# Quit the idle daemon
 	if [[ "${IDLE_SERVER,,}" == "true" ]]; then
 		# Check for the availability of the netcat (nc) binaries
-		if [[ -z "${NETCAT_CMD}" ]]; then
+		if [[ -z "${NETCAT_CMD[*]}" ]]; then
 			>&2 echo "The netcat binaries are needed for suspending an idle server."
 			exit 12
 		fi
 
 		if socket_has_session "${IDLE_SESSION_NAME}"; then
 			echo -en "Stopping idle server daemon..."
-			${SUDO_CMD} tmux -L "${SESSION_NAME}" kill-session -t "${IDLE_SESSION_NAME}"
+			"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" kill-session -t "${IDLE_SESSION_NAME}"
 			echo -e "\e[39;1m done\e[0m"
 		else
 			echo "The corresponding tmux session for ${IDLE_SESSION_NAME} was already dead."
@@ -277,7 +277,7 @@ server_stop() {
 		# Finish as soon as the server has shut down completely
 		for ((i=1; i<=MAX_SERVER_STOP_TIME; i++)); do
 			if ! socket_has_session "${SESSION_NAME}"; then
-				${SUDO_CMD} rm -f "${GAME_COMMAND_DUMP}"
+				"${SUDO_CMD[@]}" rm -f "${GAME_COMMAND_DUMP}"
 				echo -e "\e[39;1m done\e[0m"
 				break
 			fi
@@ -294,7 +294,7 @@ server_status() {
 	# Print status information about the idle daemon
 	if [[ "${IDLE_SERVER,,}" == "true" ]]; then
 		# Check for the availability of the netcat (nc) binaries
-		if [[ -z "${NETCAT_CMD}" ]]; then
+		if [[ -z "${NETCAT_CMD[*]}" ]]; then
 			>&2 echo "The netcat binaries are needed for suspending an idle server."
 			exit 12
 		fi
@@ -311,7 +311,7 @@ server_status() {
 		echo -e "Status:\e[39;1m running\e[0m"
 
 		# Calculating memory usage
-		for p in $(${SUDO_CMD} pgrep -f "${MAIN_EXECUTABLE}"); do
+		for p in $("${SUDO_CMD[@]}" pgrep -f "${MAIN_EXECUTABLE}"); do
 			ps -p"${p}" -O rss | tail -n 1;
 		done | gawk '{ count ++; sum += $2 }; END {count --; print "Number of processes =", count, "(tmux +", count, "x server)"; print "Total memory usage =", sum/1024, "MB" ;};'
 	else
@@ -339,16 +339,16 @@ backup_files() {
 
 	echo "Starting backup..."
 	fname="$(date +%Y_%m_%d_%H.%M.%S).tar.gz"
-	${SUDO_CMD} mkdir -p "${BACKUP_DEST}"
+	"${SUDO_CMD[@]}" mkdir -p "${BACKUP_DEST}"
 	if socket_has_session "${SESSION_NAME}"; then
 		game_command save-off
 		game_command save-all
 		sleep "${sleep_time:-0.3}"
 		sync && wait
-		${SUDO_CMD} tar -C "${SERVER_ROOT}" -cf "${BACKUP_DEST}/${fname}" ${BACKUP_PATHS} --totals ${BACKUP_FLAGS} 2>&1 | grep -v "tar: Removing leading "
+		"${SUDO_CMD[@]}" tar -C "${SERVER_ROOT}" -cf "${BACKUP_DEST}/${fname}" ${BACKUP_PATHS} --totals ${BACKUP_FLAGS} 2>&1 | grep -v "tar: Removing leading "
 		game_command save-on
 	else
-		${SUDO_CMD} tar -C "${SERVER_ROOT}" -cf "${BACKUP_DEST}/${fname}" ${BACKUP_PATHS} --totals ${BACKUP_FLAGS} 2>&1 | grep -v "tar: Removing leading "
+		"${SUDO_CMD[@]}" tar -C "${SERVER_ROOT}" -cf "${BACKUP_DEST}/${fname}" ${BACKUP_PATHS} --totals ${BACKUP_FLAGS} 2>&1 | grep -v "tar: Removing leading "
 	fi
 	echo -e "\e[39;1mbackup completed\e[0m\n"
 
@@ -356,7 +356,7 @@ backup_files() {
 	backup_count=$(for f in "${BACKUP_DEST}"/[0-9_.]*; do echo "${f}"; done | wc -l)
 	if [[ $(( backup_count - KEEP_BACKUPS )) -gt 0 ]]; then
 		for old_backup in $(for f in "${BACKUP_DEST}"/[0-9_.]*; do echo "${f}"; done | head -n"$(( backup_count - KEEP_BACKUPS ))"); do
-			${SUDO_CMD} rm "${old_backup}";
+			"${SUDO_CMD[@]}" rm "${old_backup}";
 		done
 		echo -e "\e[39;1m done\e[0m ($(( backup_count - KEEP_BACKUPS)) backup(s) pruned)"
 	else
@@ -425,7 +425,7 @@ backup_restore() {
 	fi
 
 	echo "Restoring backup..."
-	if ${SUDO_CMD} tar -xf "${fname}" -C "${SERVER_ROOT}" 2>&1; then
+	if "${SUDO_CMD[@]}" tar -xf "${fname}" -C "${SERVER_ROOT}" 2>&1; then
 		echo -e "\e[39;1mRestoration completed\e[0m"
 	else
 		echo -e "\e[39;1mFailed to restore backup.\e[0m"
@@ -449,7 +449,7 @@ server_command() {
 # Enter the tmux game session
 server_console() {
 	if socket_has_session "${SESSION_NAME}"; then
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" attach -t "${SESSION_NAME}":0.0
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" attach -t "${SESSION_NAME}":0.0
 	else
 		echo "There is no ${SESSION_NAME} session to connect to."
 	fi
@@ -458,7 +458,7 @@ server_console() {
 # Check if there is a session available
 socket_has_session() {
 	if [[ "$(whoami)" != "${GAME_USER}" ]]; then
-		${SUDO_CMD} tmux -L "${SESSION_NAME}" has-session -t "${1}":0.0 2> /dev/null
+		"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" has-session -t "${1}":0.0 2> /dev/null
 		return $?
 	fi
 	tmux -L "${SESSION_NAME}" has-session -t "${1}":0.0 2> /dev/null
@@ -468,9 +468,9 @@ socket_has_session() {
 socket_session_is_alive() {
 	if socket_has_session "${1}"; then
 		if [[ "$(whoami)" != "${GAME_USER}" ]]; then
-			return $(${SUDO_CMD} tmux -L "${SESSION_NAME}" list-panes -t "${1}":0.0 -F '#{pane_dead}' 2> /dev/null)
+			return "$("${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" list-panes -t "${1}":0.0 -F '#{pane_dead}' 2> /dev/null)"
 		fi
-		return $(tmux -L "${SESSION_NAME}" list-panes -t "${1}":0.0 -F '#{pane_dead}' 2> /dev/null)
+		return "$(tmux -L "${SESSION_NAME}" list-panes -t "${1}":0.0 -F '#{pane_dead}' 2> /dev/null)"
 	else
 		return 1
 	fi
