@@ -190,7 +190,7 @@ server_start() {
 				# Session is dead but remain-on-exit left it open; close it for sure
 				"${SUDO_CMD[@]}" tmux -L "${SESSION_NAME}" kill-session -t "${SESSION_NAME}"
 				exit 1
-			elif grep -q -i "${SERVER_START_SUCCESS}" "${GAME_COMMAND_DUMP}"; then
+			elif "${SUDO_CMD[@]}" grep -q -i "${SERVER_START_SUCCESS}" "${GAME_COMMAND_DUMP}"; then
 				echo -e "\e[39;1m done\e[0m"
 				break
 			elif [[ $i -eq ${MAX_SERVER_START_TIME} ]]; then
